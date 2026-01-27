@@ -15,9 +15,11 @@
 
 (package
  (name flamegraphs)
- (synopsis "A library for manipulating flamegraphs")
+ (synopsis "Build flamegraphs programmatically and export to SVG or folded stacks")
+ (description
+  "An OCaml library for constructing flamegraphs from stack traces or tree structures, with interactive SVG rendering and folded stacks format support compatible with flamegraph.pl.")
  (depends
   ocaml
   (alcotest :with-test))
  (tags
-  ("flamegraph" "perf" "visualization" "profiling")))
+  (flamegraph profiling visualization svg performance)))

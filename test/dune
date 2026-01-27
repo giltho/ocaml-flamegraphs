@@ -3,6 +3,7 @@
  (libraries flamegraphs alcotest))
 
 ; SVG diff test - generates SVG and compares with expected output
+
 (executable
  (name gen_svg)
  (libraries flamegraphs))
