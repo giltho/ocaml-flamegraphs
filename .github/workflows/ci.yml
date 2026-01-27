@@ -1,0 +1,26 @@
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+# Cancel previous versions of this job that are still running.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+name: Build and Test
+jobs:
+  build:
+    strategy:
+      matrix:
+        runs-on: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Use dune
+        uses: ocaml-dune/setup-dune@v2
+        with:
+          display: "short"
