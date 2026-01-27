@@ -1,3 +1,18 @@
 (test
- (name test_ocaml_flamegraph)
- (libraries ocaml_flamegraph))
+ (name test_flamegraphs)
+ (libraries flamegraphs alcotest))
+
+; SVG diff test - generates SVG and compares with expected output
+(executable
+ (name gen_svg)
+ (libraries flamegraphs))
+
+(rule
+ (with-stdout-to
+  test_flamegraph.svg.gen
+  (run ./gen_svg.exe)))
+
+(rule
+ (alias runtest)
+ (action
+  (diff test_flamegraph.svg.expected test_flamegraph.svg.gen)))
