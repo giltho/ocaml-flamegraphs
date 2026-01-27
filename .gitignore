@@ -48,6 +48,9 @@ Temporary Items
 # ocamlbuild working directory
 _build/
 
+# dune lock
+dune.lock
+
 # ocamlbuild targets
 *.byte
 *.native
