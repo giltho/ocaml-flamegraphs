@@ -20,6 +20,7 @@
   "An OCaml library for constructing flamegraphs from stack traces or tree structures, with interactive SVG rendering and folded stacks format support compatible with flamegraph.pl.")
  (depends
   ocaml
+  (ppx_blob :build)
   (alcotest :with-test))
  (tags
   (flamegraph profiling visualization svg performance)))

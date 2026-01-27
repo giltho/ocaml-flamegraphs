@@ -13,6 +13,7 @@ bug-reports: "https://github.com/giltho/ocaml-flamegraphs/issues"
 depends: [
   "dune" {>= "3.21"}
   "ocaml"
+  "ppx_blob" {build}
   "alcotest" {with-test}
   "odoc" {with-doc}
 ]

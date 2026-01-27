@@ -1,2 +1,7 @@
 (library
- (public_name flamegraphs))
+ (public_name flamegraphs)
+ (preprocess
+  (pps ppx_blob))
+ (preprocessor_deps
+  (file flamegraph.css)
+  (file flamegraph.js)))

@@ -69,178 +69,6 @@ let get_color scheme frame ~depth =
   | Io -> Color.io frame.Flamegraph.name
   | Custom f -> f frame ~depth
 
-(** JavaScript code for interactivity. *)
-let javascript = {|
-<script type="text/javascript">
-<![CDATA[
-(function() {
-  "use strict";
-  
-  var svg = null;
-  var frames = null;
-  var searchInput = null;
-  var matchCount = null;
-  var details = null;
-  var currentRoot = null;
-  var originalTransforms = new Map();
-  var originalWidths = new Map();
-  
-  function init() {
-    svg = document.querySelector("svg.flamegraph");
-    if (!svg) return;
-    
-    frames = svg.querySelectorAll("g.frame");
-    searchInput = svg.querySelector("#search-input");
-    matchCount = svg.querySelector("#match-count");
-    details = svg.querySelector("#details");
-    
-    // Store original transforms and widths
-    frames.forEach(function(frame) {
-      var rect = frame.querySelector("rect");
-      originalTransforms.set(frame, frame.getAttribute("transform") || "");
-      originalWidths.set(rect, parseFloat(rect.getAttribute("width")));
-    });
-    
-    // Set up event handlers
-    frames.forEach(function(frame) {
-      frame.addEventListener("click", handleClick);
-      frame.addEventListener("mouseover", handleMouseOver);
-      frame.addEventListener("mouseout", handleMouseOut);
-    });
-    
-    if (searchInput) {
-      searchInput.addEventListener("input", handleSearch);
-    }
-    
-    var resetBtn = svg.querySelector("#reset-zoom");
-    if (resetBtn) {
-      resetBtn.addEventListener("click", resetZoom);
-    }
-  }
-  
-  function handleClick(e) {
-    e.stopPropagation();
-    var frame = e.currentTarget;
-    zoom(frame);
-  }
-  
-  function handleMouseOver(e) {
-    var frame = e.currentTarget;
-    var rect = frame.querySelector("rect");
-    var title = frame.querySelector("title");
-    if (details && title) {
-      details.textContent = title.textContent;
-    }
-    rect.style.stroke = "#000";
-    rect.style.strokeWidth = "1";
-  }
-  
-  function handleMouseOut(e) {
-    var frame = e.currentTarget;
-    var rect = frame.querySelector("rect");
-    rect.style.stroke = "";
-    rect.style.strokeWidth = "";
-    if (details) {
-      details.textContent = "";
-    }
-  }
-  
-  function getFrameData(frame) {
-    var rect = frame.querySelector("rect");
-    var transform = originalTransforms.get(frame) || "";
-    var match = transform.match(/translate\(([\d.]+),\s*([\d.]+)\)/);
-    var x = match ? parseFloat(match[1]) : 0;
-    var y = match ? parseFloat(match[2]) : 0;
-    var width = originalWidths.get(rect) || parseFloat(rect.getAttribute("width"));
-    return { x: x, y: y, width: width, frame: frame };
-  }
-  
-  function zoom(targetFrame) {
-    var target = getFrameData(targetFrame);
-    currentRoot = targetFrame;
-    
-    var svgWidth = parseFloat(svg.getAttribute("width")) - 20; // margins
-    var svgHeight = parseFloat(svg.getAttribute("height"));
-    var scale = svgWidth / target.width;
-    var offsetX = target.x;
-    var targetY = target.y;
-    
-    frames.forEach(function(frame) {
-      var data = getFrameData(frame);
-      var rect = frame.querySelector("rect");
-      var text = frame.querySelector("text");
-      
-      // Check if this frame is in the zoomed subtree
-      var newX = (data.x - offsetX) * scale + 10;
-      var newWidth = data.width * scale;
-      
-      // Hide frames outside the zoomed view
-      // In bottom-up layout: hide frames below target (y > targetY) or outside x bounds
-      if (data.y > targetY || newX + newWidth < 10 || newX > svgWidth + 10) {
-        frame.style.display = "none";
-      } else {
-        frame.style.display = "";
-        // Keep y position relative, shift so target ends up at bottom of graph area
-        var newY = data.y + (svgHeight - 30 - 16) - targetY;
-        frame.setAttribute("transform", "translate(" + newX + "," + newY + ")");
-        rect.setAttribute("width", Math.max(0.5, newWidth));
-        
-        // Update text visibility
-        if (text) {
-          if (newWidth < 30) {
-            text.style.display = "none";
-          } else {
-            text.style.display = "";
-          }
-        }
-      }
-    });
-  }
-  
-  function resetZoom() {
-    currentRoot = null;
-    frames.forEach(function(frame) {
-      var rect = frame.querySelector("rect");
-      var text = frame.querySelector("text");
-      frame.style.display = "";
-      frame.setAttribute("transform", originalTransforms.get(frame) || "");
-      rect.setAttribute("width", originalWidths.get(rect));
-      if (text) text.style.display = "";
-    });
-  }
-  
-  function handleSearch() {
-    var query = searchInput.value.toLowerCase().trim();
-    var count = 0;
-    
-    frames.forEach(function(frame) {
-      var rect = frame.querySelector("rect");
-      var title = frame.querySelector("title");
-      var name = title ? title.textContent.toLowerCase() : "";
-      
-      if (query && name.indexOf(query) !== -1) {
-        rect.style.fill = "#ffff00";
-        count++;
-      } else {
-        rect.style.fill = "";
-      }
-    });
-    
-    if (matchCount) {
-      matchCount.textContent = query ? count + " matches" : "";
-    }
-  }
-  
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
-]]>
-</script>
-|}
-
 (** {1 Rendering} *)
 
 (** Render a single frame as SVG group. *)
@@ -312,18 +140,8 @@ let to_string ?(config = default_config) fg =
   let width_scale = if total > 0.0 then usable_width /. total else 0.0 in
   
   (* SVG header *)
-  Printf.bprintf buf
-    {|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg class="flamegraph" version="1.1" width="%d" height="%d" xmlns="http://www.w3.org/2000/svg">
-<style>
-  .frame { cursor: pointer; }
-  .frame:hover rect { stroke: #000; stroke-width: 1; }
-  text { pointer-events: none; }
-</style>
-<rect x="0" y="0" width="100%%" height="100%%" fill="%s"/>
-|}
-    config.width total_height config.background;
+  Buffer.add_string buf
+    (Svg_code.svg_header ~width:config.width ~height:total_height ~background:config.background);
   
   (* Title and controls *)
   let title_text =
@@ -331,20 +149,9 @@ let to_string ?(config = default_config) fg =
     | Some t -> escape_xml t
     | None -> "Flame Graph"
   in
-  Printf.bprintf buf
-    {|<text x="10" y="24" font-size="16" font-family="%s" font-weight="bold" fill="#000">%s</text>
-<text x="%d" y="24" font-size="12" font-family="%s" fill="#666" text-anchor="end" id="reset-zoom" style="cursor:pointer">[Reset Zoom]</text>
-<text x="10" y="42" font-size="12" font-family="%s" fill="#666">Search: </text>
-<foreignObject x="60" y="28" width="200" height="20">
-<input xmlns="http://www.w3.org/1999/xhtml" id="search-input" type="text" style="width:190px;font-size:11px;border:1px solid #ccc;padding:2px;"/>
-</foreignObject>
-<text x="270" y="42" font-size="11" font-family="%s" fill="#888" id="match-count"></text>
-<text x="10" y="%d" font-size="11" font-family="%s" fill="#666" id="details"></text>
-|}
-    config.font_family title_text
-    (config.width - margin) config.font_family
-    config.font_family config.font_family
-    (total_height - 10) config.font_family;
+  Buffer.add_string buf
+    (Svg_code.controls ~font_family:config.font_family ~title:title_text
+       ~width:config.width ~margin ~details_y:(total_height - 10));
   
   (* Render all frames - start from bottom, flames grow upward *)
   let roots = Flamegraph.roots fg in
@@ -356,11 +163,8 @@ let to_string ?(config = default_config) fg =
       x := !x +. root.total_weight *. width_scale)
     roots;
   
-  (* Add JavaScript *)
-  Buffer.add_string buf javascript;
-  
-  (* Close SVG *)
-  Buffer.add_string buf "</svg>\n";
+  (* Add JavaScript and close SVG *)
+  Buffer.add_string buf (Svg_code.svg_footer ());
   Buffer.contents buf
 
 let to_channel ?(config = default_config) oc fg =
