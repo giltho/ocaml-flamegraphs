@@ -5,24 +5,30 @@ open Flamegraphs
 (** {1 Custom Testables} *)
 
 let float_epsilon = 0.001
-
 let float_eq a b = abs_float (a -. b) < float_epsilon
 
-let float_testable = Alcotest.testable (fun fmt f -> Format.fprintf fmt "%.6f" f) float_eq
+let float_testable =
+  Alcotest.testable (fun fmt f -> Format.fprintf fmt "%.6f" f) float_eq
 
 (** {1 Flamegraph Tests} *)
 
 let test_empty () =
   let fg = Flamegraph.empty in
   Alcotest.(check bool) "empty should be empty" true (Flamegraph.is_empty fg);
-  Alcotest.(check float_testable) "total_weight" 0.0 (Flamegraph.total_weight fg);
+  Alcotest.(check float_testable)
+    "total_weight" 0.0
+    (Flamegraph.total_weight fg);
   Alcotest.(check int) "depth" 0 (Flamegraph.depth fg)
 
 let test_single_stack () =
-  let stack = Flamegraph.stack_of_strings ~weight:10.0 [ "main"; "foo"; "bar" ] in
+  let stack =
+    Flamegraph.stack_of_strings ~weight:10.0 [ "main"; "foo"; "bar" ]
+  in
   let fg = Flamegraph.of_stacks [ stack ] in
   Alcotest.(check bool) "should not be empty" false (Flamegraph.is_empty fg);
-  Alcotest.(check float_testable) "total_weight" 10.0 (Flamegraph.total_weight fg);
+  Alcotest.(check float_testable)
+    "total_weight" 10.0
+    (Flamegraph.total_weight fg);
   Alcotest.(check int) "depth" 3 (Flamegraph.depth fg)
 
 let test_merging_stacks () =
@@ -34,7 +40,9 @@ let test_merging_stacks () =
         Flamegraph.stack_of_strings ~weight:3.0 [ "main"; "qux" ];
       ]
   in
-  Alcotest.(check float_testable) "total_weight" 18.0 (Flamegraph.total_weight fg);
+  Alcotest.(check float_testable)
+    "total_weight" 18.0
+    (Flamegraph.total_weight fg);
   let roots = Flamegraph.roots fg in
   Alcotest.(check int) "root count" 1 (List.length roots);
   let root = List.hd roots in
@@ -47,7 +55,9 @@ let test_frame_with_metadata () =
   in
   Alcotest.(check string) "frame name" "my_func" frame.name;
   Alcotest.(check int) "metadata length" 2 (List.length frame.metadata);
-  Alcotest.(check string) "file metadata" "test.ml" (List.assoc "file" frame.metadata)
+  Alcotest.(check string)
+    "file metadata" "test.ml"
+    (List.assoc "file" frame.metadata)
 
 let test_iteration () =
   let fg =
@@ -71,7 +81,8 @@ let flamegraph_tests =
   [
     Alcotest.test_case "empty flamegraph" `Quick test_empty;
     Alcotest.test_case "single stack" `Quick test_single_stack;
-    Alcotest.test_case "merging stacks with common prefix" `Quick test_merging_stacks;
+    Alcotest.test_case "merging stacks with common prefix" `Quick
+      test_merging_stacks;
     Alcotest.test_case "frame with metadata" `Quick test_frame_with_metadata;
     Alcotest.test_case "iteration over stacks" `Quick test_iteration;
   ]
@@ -88,8 +99,7 @@ let test_tree_nested () =
   let open Flamegraph in
   let fg =
     of_tree
-      (node "main"
-         [ node "foo" ~weight:10.0 []; node "bar" ~weight:5.0 [] ])
+      (node "main" [ node "foo" ~weight:10.0 []; node "bar" ~weight:5.0 [] ])
   in
   Alcotest.(check float_testable) "total_weight" 15.0 (total_weight fg);
   Alcotest.(check int) "depth" 2 (depth fg);
@@ -123,7 +133,9 @@ let test_tree_matches_stacks () =
   let fg_tree =
     of_tree
       (node "main"
-         [ node "foo" [ node "bar" ~weight:10.0 [] ]; node "baz" ~weight:5.0 [] ])
+         [
+           node "foo" [ node "bar" ~weight:10.0 [] ]; node "baz" ~weight:5.0 [];
+         ])
   in
   let fg_stacks =
     of_stacks
@@ -133,9 +145,7 @@ let test_tree_matches_stacks () =
       ]
   in
   Alcotest.(check float_testable)
-    "total_weight should match"
-    (total_weight fg_tree)
-    (total_weight fg_stacks);
+    "total_weight should match" (total_weight fg_tree) (total_weight fg_stacks);
   Alcotest.(check int) "depth should match" (depth fg_tree) (depth fg_stacks)
 
 let tree_tests =
@@ -158,7 +168,9 @@ let test_folded_export () =
       ]
   in
   let output = Folded.to_string fg in
-  Alcotest.(check bool) "output should not be empty" true (String.length output > 0);
+  Alcotest.(check bool)
+    "output should not be empty" true
+    (String.length output > 0);
   let lines = String.split_on_char '\n' output in
   let non_empty = List.filter (fun s -> String.length s > 0) lines in
   Alcotest.(check int) "line count" 2 (List.length non_empty)
@@ -175,31 +187,36 @@ let test_folded_roundtrip () =
   match Folded.of_string exported with
   | Error e -> Alcotest.fail ("parse error: " ^ e)
   | Ok reimported ->
-    Alcotest.(check float_testable)
-      "total_weight"
-      (Flamegraph.total_weight original)
-      (Flamegraph.total_weight reimported)
+      Alcotest.(check float_testable)
+        "total_weight"
+        (Flamegraph.total_weight original)
+        (Flamegraph.total_weight reimported)
 
 let test_folded_parse () =
   let input = "main;foo;bar 10\nmain;baz 5\n" in
   match Folded.of_string input with
   | Error e -> Alcotest.fail ("parse error: " ^ e)
   | Ok fg ->
-    Alcotest.(check float_testable) "total_weight" 15.0 (Flamegraph.total_weight fg)
+      Alcotest.(check float_testable)
+        "total_weight" 15.0
+        (Flamegraph.total_weight fg)
 
 let test_folded_parse_with_comments () =
   let input = "# This is a comment\nmain;foo 10\n\nmain;bar 5\n" in
   match Folded.of_string input with
   | Error e -> Alcotest.fail ("parse error: " ^ e)
   | Ok fg ->
-    Alcotest.(check float_testable) "total_weight" 15.0 (Flamegraph.total_weight fg)
+      Alcotest.(check float_testable)
+        "total_weight" 15.0
+        (Flamegraph.total_weight fg)
 
 let folded_tests =
   [
     Alcotest.test_case "export" `Quick test_folded_export;
     Alcotest.test_case "roundtrip" `Quick test_folded_roundtrip;
     Alcotest.test_case "parse" `Quick test_folded_parse;
-    Alcotest.test_case "parse with comments" `Quick test_folded_parse_with_comments;
+    Alcotest.test_case "parse with comments" `Quick
+      test_folded_parse_with_comments;
   ]
 
 (** {1 SVG Tests} *)
@@ -227,27 +244,33 @@ let test_svg_generation () =
   in
   let svg = Svg.to_string fg in
   Alcotest.(check bool)
-    "should start with XML declaration"
-    true
+    "should start with XML declaration" true
     (String.length svg > 0 && String.sub svg 0 5 = "<?xml");
   Alcotest.(check bool) "should contain svg tag" true (contains svg "<svg");
-  Alcotest.(check bool) "should contain flamegraph class" true (contains svg "flamegraph")
+  Alcotest.(check bool)
+    "should contain flamegraph class" true
+    (contains svg "flamegraph")
 
 let test_svg_with_config () =
   let fg =
     Flamegraph.of_stacks
       [ Flamegraph.stack_of_strings ~weight:10.0 [ "main"; "foo" ] ]
   in
-  let config = Svg.config ~width:800 ~title:"Test Profile" ~color_scheme:Cold () in
+  let config =
+    Svg.config ~width:800 ~title:"Test Profile" ~color_scheme:Cold ()
+  in
   let svg = Svg.to_string ~config fg in
-  Alcotest.(check bool) "should have custom width" true (contains svg "width=\"800\"");
+  Alcotest.(check bool)
+    "should have custom width" true
+    (contains svg "width=\"800\"");
   Alcotest.(check bool) "should have title" true (contains svg "Test Profile")
 
 let test_svg_escaping () =
   let fg =
     Flamegraph.of_stacks
       [
-        Flamegraph.stack_of_strings ~weight:1.0 [ "main"; "foo<bar>"; "test&value" ];
+        Flamegraph.stack_of_strings ~weight:1.0
+          [ "main"; "foo<bar>"; "test&value" ];
       ]
   in
   let svg = Svg.to_string fg in
@@ -259,8 +282,11 @@ let test_svg_javascript () =
     Flamegraph.of_stacks [ Flamegraph.stack_of_strings ~weight:1.0 [ "main" ] ]
   in
   let svg = Svg.to_string fg in
-  Alcotest.(check bool) "should contain script tag" true (contains svg "<script");
-  Alcotest.(check bool) "should contain zoom function" true (contains svg "function zoom")
+  Alcotest.(check bool)
+    "should contain script tag" true (contains svg "<script");
+  Alcotest.(check bool)
+    "should contain zoom function" true
+    (contains svg "function zoom")
 
 let svg_tests =
   [

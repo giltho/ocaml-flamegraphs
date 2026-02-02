@@ -1,7 +1,7 @@
 (** SVG code fragments - CSS, JavaScript, and template functions.
-    
-    Static content is loaded from external files via ppx_blob.
-    Dynamic templates that require variables are defined as functions. *)
+
+    Static content is loaded from external files via ppx_blob. Dynamic templates
+    that require variables are defined as functions. *)
 
 (** CSS styles loaded from flamegraph.css *)
 let css : string = [%blob "flamegraph.css"]
@@ -10,8 +10,7 @@ let css : string = [%blob "flamegraph.css"]
 let js : string = [%blob "flamegraph.js"]
 
 (** Wrap CSS in a style element *)
-let style_element () =
-  Printf.sprintf "<style>\n%s</style>" css
+let style_element () = Printf.sprintf "<style>\n%s</style>" css
 
 (** Wrap JavaScript in a script element with CDATA for SVG *)
 let script_element () =
@@ -19,7 +18,8 @@ let script_element () =
 <![CDATA[
 %s
 ]]>
-</script>|} js
+</script>|}
+    js
 
 (** SVG header template *)
 let svg_header ~width ~height ~background =
@@ -44,11 +44,8 @@ let controls ~font_family ~title ~width ~margin ~details_y =
 <text x="270" y="42" font-size="11" font-family="%s" fill="#888" id="match-count"></text>
 <text x="10" y="%d" font-size="11" font-family="%s" fill="#666" id="details"></text>
 |}
-    font_family title
-    (width - margin) font_family
-    font_family font_family
+    font_family title (width - margin) font_family font_family font_family
     details_y font_family
 
 (** SVG footer with script *)
-let svg_footer () =
-  Printf.sprintf "%s\n</svg>\n" (script_element ())
+let svg_footer () = Printf.sprintf "%s\n</svg>\n" (script_element ())

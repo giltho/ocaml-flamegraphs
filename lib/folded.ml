@@ -2,14 +2,8 @@
 
 (** {1 Configuration} *)
 
-type weight_format =
-  | Integer
-  | Float of int
-
-type config = {
-  separator : string;
-  weight_format : weight_format;
-}
+type weight_format = Integer | Float of int
+type config = { separator : string; weight_format : weight_format }
 
 let default_config = { separator = ";"; weight_format = Float 2 }
 
@@ -34,12 +28,10 @@ let split_on_string ~sep s =
       match String.index_from_opt s start sep.[0] with
       | None -> List.rev (String.sub s start (String.length s - start) :: acc)
       | Some i ->
-        if i + sep_len <= String.length s
-           && String.sub s i sep_len = sep
-        then
-          let part = String.sub s start (i - start) in
-          loop (part :: acc) (i + sep_len)
-        else loop acc (i + 1)
+          if i + sep_len <= String.length s && String.sub s i sep_len = sep then
+            let part = String.sub s start (i - start) in
+            loop (part :: acc) (i + sep_len)
+          else loop acc (i + 1)
     in
     loop [] 0
 
@@ -71,43 +63,49 @@ let to_file ?(config = default_config) path fg =
       ~finally:(fun () -> close_out oc)
       (fun () -> to_channel ~config oc fg);
     Ok ()
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg
 
 (** {1 Import} *)
 
 (** Parse a single line of folded stacks format. *)
 let parse_line ~config ~line_num line =
   let line = String.trim line in
-  if line = "" || String.length line > 0 && line.[0] = '#' then
+  if line = "" || (String.length line > 0 && line.[0] = '#') then
     (* Empty line or comment *)
     Ok None
   else
     (* Find the last space - everything before is the stack, after is the weight *)
     match String.rindex_opt line ' ' with
     | None ->
-      Error (Printf.sprintf "Line %d: missing weight (no space found)" line_num)
-    | Some space_idx ->
-      let stack_part = String.sub line 0 space_idx in
-      let weight_part = String.sub line (space_idx + 1) (String.length line - space_idx - 1) in
-      match float_of_string_opt weight_part with
-      | None ->
-        Error (Printf.sprintf "Line %d: invalid weight '%s'" line_num weight_part)
-      | Some weight ->
-        let frame_names = split_on_string ~sep:config.separator stack_part in
-        let frames = List.map Flamegraph.frame frame_names in
-        let stack = Flamegraph.stack ~weight frames in
-        Ok (Some stack)
+        Error
+          (Printf.sprintf "Line %d: missing weight (no space found)" line_num)
+    | Some space_idx -> (
+        let stack_part = String.sub line 0 space_idx in
+        let weight_part =
+          String.sub line (space_idx + 1) (String.length line - space_idx - 1)
+        in
+        match float_of_string_opt weight_part with
+        | None ->
+            Error
+              (Printf.sprintf "Line %d: invalid weight '%s'" line_num
+                 weight_part)
+        | Some weight ->
+            let frame_names =
+              split_on_string ~sep:config.separator stack_part
+            in
+            let frames = List.map Flamegraph.frame frame_names in
+            let stack = Flamegraph.stack ~weight frames in
+            Ok (Some stack))
 
 let of_string ?(config = default_config) s =
   let lines = String.split_on_char '\n' s in
   let rec loop acc line_num = function
     | [] -> Ok (Flamegraph.of_stacks (List.rev acc))
-    | line :: rest ->
-      match parse_line ~config ~line_num line with
-      | Error e -> Error e
-      | Ok None -> loop acc (line_num + 1) rest
-      | Ok (Some stack) -> loop (stack :: acc) (line_num + 1) rest
+    | line :: rest -> (
+        match parse_line ~config ~line_num line with
+        | Error e -> Error e
+        | Ok None -> loop acc (line_num + 1) rest
+        | Ok (Some stack) -> loop (stack :: acc) (line_num + 1) rest)
   in
   loop [] 1 lines
 
@@ -121,8 +119,7 @@ let of_channel ?(config = default_config) ic =
        done
      with End_of_file -> ());
     of_string ~config (Buffer.contents buf)
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg
 
 let of_file ?(config = default_config) path =
   try
@@ -130,5 +127,4 @@ let of_file ?(config = default_config) path =
     Fun.protect
       ~finally:(fun () -> close_in ic)
       (fun () -> of_channel ~config ic)
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg

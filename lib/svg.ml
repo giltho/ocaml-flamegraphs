@@ -32,17 +32,23 @@ let default_config =
     background = "#f8f8f8";
   }
 
-let config
-    ?(width = default_config.width)
+let config ?(width = default_config.width)
     ?(row_height = default_config.row_height)
     ?(font_size = default_config.font_size)
     ?(font_family = default_config.font_family)
     ?(min_width_for_text = default_config.min_width_for_text)
-    ?(color_scheme = default_config.color_scheme)
-    ?title
-    ?(background = default_config.background)
-    () =
-  { width; row_height; font_size; font_family; min_width_for_text; color_scheme; title; background }
+    ?(color_scheme = default_config.color_scheme) ?title
+    ?(background = default_config.background) () =
+  {
+    width;
+    row_height;
+    font_size;
+    font_family;
+    min_width_for_text;
+    color_scheme;
+    title;
+    background;
+  }
 
 (** {1 Helpers} *)
 
@@ -72,34 +78,35 @@ let get_color scheme frame ~depth =
 (** {1 Rendering} *)
 
 (** Render a single frame as SVG group. *)
-let render_frame buf cfg ~total_weight ~x ~y ~width ~depth (node : Flamegraph.node) =
+let render_frame buf cfg ~total_weight ~x ~y ~width ~depth
+    (node : Flamegraph.node) =
   let color = get_color cfg.color_scheme node.frame ~depth in
   let name = escape_xml node.frame.name in
-  let pct = if total_weight > 0.0 then node.total_weight /. total_weight *. 100.0 else 0.0 in
-  let title =
-    Printf.sprintf "%s (%.2f, %.2f%%)"
-      name
-      node.total_weight
-      pct
+  let pct =
+    if total_weight > 0.0 then node.total_weight /. total_weight *. 100.0
+    else 0.0
   in
-  let text_visible = width >= float_of_int cfg.width *. cfg.min_width_for_text in
-  
+  let title = Printf.sprintf "%s (%.2f, %.2f%%)" name node.total_weight pct in
+  let text_visible =
+    width >= float_of_int cfg.width *. cfg.min_width_for_text
+  in
+
   Printf.bprintf buf
     {|<g class="frame" transform="translate(%.2f,%.2f)">
 <title>%s</title>
 <rect x="0" y="0" width="%.2f" height="%d" fill="%s" rx="2" ry="2"/>
 |}
     x y title width (cfg.row_height - 1) color;
-  
+
   if text_visible then begin
-    let max_chars = int_of_float (width /. (float_of_int cfg.font_size *. 0.6)) in
+    let max_chars =
+      int_of_float (width /. (float_of_int cfg.font_size *. 0.6))
+    in
     let display_name =
       if String.length name > max_chars && max_chars > 3 then
         String.sub name 0 (max_chars - 2) ^ ".."
-      else if String.length name > max_chars then
-        ""
-      else
-        name
+      else if String.length name > max_chars then ""
+      else name
     in
     if display_name <> "" then
       Printf.bprintf buf
@@ -107,7 +114,7 @@ let render_frame buf cfg ~total_weight ~x ~y ~width ~depth (node : Flamegraph.no
 |}
         (cfg.row_height - 4) cfg.font_size cfg.font_family display_name
   end;
-  
+
   Buffer.add_string buf "</g>\n"
 
 (** Recursively render nodes. Renders from bottom up (flames grow upward). *)
@@ -122,8 +129,9 @@ let rec render_nodes buf cfg ~total_weight ~x ~y ~depth ~width_scale nodes =
         let child_x = ref x in
         List.iter
           (fun (child : Flamegraph.node) ->
-            render_nodes buf cfg ~total_weight ~x:!child_x ~y:child_y ~depth:(depth + 1) ~width_scale [ child ];
-            child_x := !child_x +. child.total_weight *. width_scale)
+            render_nodes buf cfg ~total_weight ~x:!child_x ~y:child_y
+              ~depth:(depth + 1) ~width_scale [ child ];
+            child_x := !child_x +. (child.total_weight *. width_scale))
           node.children
       end)
     nodes
@@ -136,33 +144,35 @@ let to_string ?(config = default_config) fg =
   let header_height = 60 in
   let graph_height = graph_depth * config.row_height in
   let total_height = header_height + graph_height + 30 in
-  let usable_width = float_of_int (config.width - 2 * margin) in
+  let usable_width = float_of_int (config.width - (2 * margin)) in
   let width_scale = if total > 0.0 then usable_width /. total else 0.0 in
-  
+
   (* SVG header *)
   Buffer.add_string buf
-    (Svg_code.svg_header ~width:config.width ~height:total_height ~background:config.background);
-  
+    (Svg_code.svg_header ~width:config.width ~height:total_height
+       ~background:config.background);
+
   (* Title and controls *)
   let title_text =
-    match config.title with
-    | Some t -> escape_xml t
-    | None -> "Flame Graph"
+    match config.title with Some t -> escape_xml t | None -> "Flame Graph"
   in
   Buffer.add_string buf
     (Svg_code.controls ~font_family:config.font_family ~title:title_text
        ~width:config.width ~margin ~details_y:(total_height - 10));
-  
+
   (* Render all frames - start from bottom, flames grow upward *)
   let roots = Flamegraph.roots fg in
-  let root_y = float_of_int (header_height + graph_height - config.row_height) in
+  let root_y =
+    float_of_int (header_height + graph_height - config.row_height)
+  in
   let x = ref (float_of_int margin) in
   List.iter
     (fun (root : Flamegraph.node) ->
-      render_nodes buf config ~total_weight:total ~x:!x ~y:root_y ~depth:0 ~width_scale [ root ];
-      x := !x +. root.total_weight *. width_scale)
+      render_nodes buf config ~total_weight:total ~x:!x ~y:root_y ~depth:0
+        ~width_scale [ root ];
+      x := !x +. (root.total_weight *. width_scale))
     roots;
-  
+
   (* Add JavaScript and close SVG *)
   Buffer.add_string buf (Svg_code.svg_footer ());
   Buffer.contents buf
@@ -177,5 +187,4 @@ let to_file ?(config = default_config) path fg =
       ~finally:(fun () -> close_out oc)
       (fun () -> to_channel ~config oc fg);
     Ok ()
-  with
-  | Sys_error msg -> Error msg
+  with Sys_error msg -> Error msg

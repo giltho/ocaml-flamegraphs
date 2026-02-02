@@ -1,7 +1,7 @@
 (** OCaml Flamegraph Library
 
-    A library for programmatically constructing flamegraphs and exporting
-    them to SVG or folded stacks format.
+    A library for programmatically constructing flamegraphs and exporting them
+    to SVG or folded stacks format.
 
     {1 Quick Start}
 
@@ -12,8 +12,10 @@
       let fg =
         Flamegraph.of_stacks
           [
-            Flamegraph.stack_of_strings ~weight:10.0 [ "main"; "process"; "compute" ];
-            Flamegraph.stack_of_strings ~weight:5.0 [ "main"; "process"; "allocate" ];
+            Flamegraph.stack_of_strings ~weight:10.0
+              [ "main"; "process"; "compute" ];
+            Flamegraph.stack_of_strings ~weight:5.0
+              [ "main"; "process"; "allocate" ];
             Flamegraph.stack_of_strings ~weight:3.0 [ "main"; "init" ];
           ]
 
@@ -32,11 +34,11 @@
 
     {1 Modules} *)
 
-(** Core flamegraph data structure and construction API. *)
 module Flamegraph = Flamegraph
+(** Core flamegraph data structure and construction API. *)
 
-(** SVG rendering with interactive JavaScript. *)
 module Svg = Svg
+(** SVG rendering with interactive JavaScript. *)
 
-(** Folded stacks format import/export (compatible with flamegraph.pl). *)
 module Folded = Folded
+(** Folded stacks format import/export (compatible with flamegraph.pl). *)

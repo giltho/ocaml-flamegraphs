@@ -11,12 +11,21 @@ let () =
            node "process_request"
              [
                node "parse_json"
-                 [ node "tokenize" ~weight:100.0 []; node "validate" ~weight:80.0 [] ];
+                 [
+                   node "tokenize" ~weight:100.0 [];
+                   node "validate" ~weight:80.0 [];
+                 ];
                node "handle_data"
-                 [ node "compute" ~weight:150.0 []; node "allocate" ~weight:50.0 [] ];
+                 [
+                   node "compute" ~weight:150.0 [];
+                   node "allocate" ~weight:50.0 [];
+                 ];
              ];
            node "init"
-             [ node "load_config" ~weight:30.0 []; node "setup_logging" ~weight:20.0 [] ];
+             [
+               node "load_config" ~weight:30.0 [];
+               node "setup_logging" ~weight:20.0 [];
+             ];
            node "cleanup" [ node "flush_buffers" ~weight:70.0 [] ];
          ])
   in
