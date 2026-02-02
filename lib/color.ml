@@ -13,10 +13,6 @@ let to_hex { r; g; b } =
 let lerp a b t =
   int_of_float (float_of_int a +. (float_of_int b -. float_of_int a) *. t)
 
-(** Interpolate between two colors. *)
-let interpolate c1 c2 t =
-  { r = lerp c1.r c2.r t; g = lerp c1.g c2.g t; b = lerp c1.b c2.b t }
-
 (** Generate a deterministic pseudo-random value from a string. *)
 let hash_string s =
   let h = ref 0 in
