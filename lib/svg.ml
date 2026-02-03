@@ -81,12 +81,16 @@ let get_color scheme frame ~depth =
 let render_frame buf cfg ~total_weight ~x ~y ~width ~depth
     (node : Flamegraph.node) =
   let color = get_color cfg.color_scheme node.frame ~depth in
-  let name = escape_xml node.frame.name in
+  let unescaped_name = node.frame.name in
   let pct =
     if total_weight > 0.0 then node.total_weight /. total_weight *. 100.0
     else 0.0
   in
-  let title = Printf.sprintf "%s (%.2f, %.2f%%)" name node.total_weight pct in
+  let title =
+    Printf.sprintf "%s (%.2f, %.2f%%)"
+      (escape_xml unescaped_name)
+      node.total_weight pct
+  in
   let text_visible =
     width >= float_of_int cfg.width *. cfg.min_width_for_text
   in
@@ -102,17 +106,18 @@ let render_frame buf cfg ~total_weight ~x ~y ~width ~depth
     let max_chars =
       int_of_float (width /. (float_of_int cfg.font_size *. 0.6))
     in
-    let display_name =
-      if String.length name > max_chars && max_chars > 3 then
-        String.sub name 0 (max_chars - 2) ^ ".."
-      else if String.length name > max_chars then ""
-      else name
+    let unescaped_display_name =
+      if String.length unescaped_name > max_chars && max_chars > 3 then
+        String.sub unescaped_name 0 (max_chars - 2) ^ ".."
+      else if String.length unescaped_name > max_chars then ""
+      else unescaped_name
     in
-    if display_name <> "" then
+    if unescaped_display_name <> "" then
       Printf.bprintf buf
         {|<text x="3" y="%d" font-size="%d" font-family="%s" fill="#000">%s</text>
 |}
-        (cfg.row_height - 4) cfg.font_size cfg.font_family display_name
+        (cfg.row_height - 4) cfg.font_size cfg.font_family
+        (escape_xml unescaped_display_name)
   end;
 
   Buffer.add_string buf "</g>\n"
