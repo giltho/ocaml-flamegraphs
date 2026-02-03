@@ -10,3 +10,7 @@
 text {
   pointer-events: none;
 }
+
+#reset-zoom {
+  pointer-events: auto;
+}
