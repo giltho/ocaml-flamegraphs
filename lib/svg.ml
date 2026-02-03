@@ -182,6 +182,7 @@ let to_channel ?(config = default_config) oc fg =
 
 let to_file ?(config = default_config) path fg =
   try
+    Files.ensure_folder_exists_for path;
     let oc = open_out path in
     Fun.protect
       ~finally:(fun () -> close_out oc)
